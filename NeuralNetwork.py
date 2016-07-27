@@ -8,12 +8,25 @@ __author__ = "Christopher Sweet - crs4263@rit.edu"
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 import numpy as np
+import csv
 
 # Sigmoid function which determines how much to refine values by.
 def nonlin(x,deriv = False):
     if(deriv == True):
         return x*(1-x)
     return 1/(1+np.exp(-x))
+
+# Read in .csv file that contains biking data
+def readData(fname):
+    with open(fname, newline='') as csvfile:
+        dataReader = csv.reader(csvfile, delimiter = ',', quotechar = '|')
+        inputArray = np.array([[]])
+        outputArray = np.array([[]])
+        for row in dataReader:
+            inputArray = np.append(inputArray, row[0])
+            outputArray = np.append(outputArray, row[1])
+    csvfile.close()
+    return inputArray, outputArray
 
 # Make a prediction based off the learned values
 def predict(model, time):
@@ -45,12 +58,15 @@ def scale_up(array, prediction, maxVals):
         array[loop.index] = prediction[loop.index]*maxVals[1]
         loop.iternext()
 
-def create_model():
+def create_model(fname):
+    # Reads the training data from csv
+    inputData, outputData = readData(fname)
+
     # Input Data - Duration of Ride (min)
-    inputData = np.array([[63.0, 27.0, 53.0, 34.0, 48.0, 120.0, 66.0, 75.0, 125.0]]).T
+    inputData = inputData.T
 
     # Output Data - Distance traveled (Mi)
-    outputData = np.array([[10.8, 4.28, 8.86, 8.28, 9.11, 21.6, 13.33, 12.55, 21.35]]).T
+    outputData = outputData.T
 
     # Store the max values, and use them to scale the data
     maxVals = np.array([[np.amax(inputData)], [np.amax(outputData)]])
@@ -92,6 +108,7 @@ def create_model():
     # Return an anonymous dictionary of the weighted network values
     return { 'maxVals': maxVals, 'syn1': synapse1, 'syn0': synapse0}
 
-neuralNetwork = create_model()
+fname = input("Enter a csv filename: ")
+neuralNetwork = create_model(fname)
 distance = predict(neuralNetwork, 60)
 print("Based off your previous data you should be able to ride", distance, "miles!")
