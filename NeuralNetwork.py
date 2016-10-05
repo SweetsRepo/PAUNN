@@ -9,58 +9,105 @@ __author__ = "Christopher Sweet - crs4263@rit.edu"
 
 import numpy as np
 import matplotlib as mpl
-from tkinter import *
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+import tkinter as tk
 from tkinter import ttk
+from tkinter.filedialog import askopenfilename
+
 import csv
 
 class Menu():
     """
-    Tkinter to get a basic basic UI
+    Create the menu system for PAUNN
+    Set all UI Elements in init function.
+    Bind all buttons to callback functions.
     """
+    def __init__(self):
+        """
+        Create the UI and set all attributes for usability
+        """
+        self.nn = None
+        self.master = tk.Tk()
+        self.master.minsize(width=800, height=450)
+        self.master.maxsize(width=800, height=450)
+        self.master.title("PAUNN")
+        # Notebook settings
+        self.pages = ttk.Notebook(self.master, width=750, height=400, padding=10)
+        self.openMenuFrame = tk.Frame(self.pages)
+        # Upper panel on the first page
+        self.upperFrame = tk.Frame(self.openMenuFrame)
+        self.loadfileButton = tk.Button(self.upperFrame, text='Select File', fg='black',
+                                command = self.loadFileCallback)
+        self.loadfileLabel = tk.Label(self.upperFrame, text='Load Biking Data: ')
+        # Lower panel on the first page
+        self.lowerFrame = tk.Frame(self.openMenuFrame)
+        # Adds the first page in
+        self.pages.add(self.openMenuFrame, text="Load")
 
-    master = Tk()
-    master.minsize(width=800, height=450)
-    pages = ttk.Notebook(master)
-    pages.winfo_width()
+        # 2nd Page of the notebook
+        self.showDataFrame = tk.Frame(self.pages)
+        # Upper panel on the second page. Broken into left and right
+        self.upperFrame2 = tk.Frame(self.showDataFrame)
+        self.upperFrame2Left = tk.Frame(self.upperFrame2)
+        self.upperFrame2Right = tk.Frame(self.upperFrame2)
+        self.timeLabel = tk.Label(self.upperFrame2Left, text = 'Time(min)', fg = 'black')
+        self.timeEntry = tk.Entry(self.upperFrame2Left, width = 5, textvariable = tk.StringVar)
+        self.distanceLabel = tk.Label(self.upperFrame2Left, text='Distance(mi)', fg='black')
+        self.distanceEntry = tk.Entry(self.upperFrame2Left, width = 5, state = tk.DISABLED)
+        self.predictButton = tk.Button(self.upperFrame2Left, text = 'Predict', fg ='black',
+                               command = self.predictCallback)
+        self.spacingLabel = tk.Label(self.upperFrame2Left, text = "   ")
+        # Lower panel on the second page
+        self.lowerFrame2 = tk.Frame(self.showDataFrame)
+        self.resetButton = tk.Button(self.lowerFrame2, text = 'Reset', fg = 'black', bd = 2)
 
-    openMenuFrame = Frame(pages)
-    openMenuFrame.pack()
+        # Adds the second page in
+        self.pages.add(self.showDataFrame, text = "Visualize")
 
-    #Contains the file name box and load button
-    upperFrame = Frame(openMenuFrame)
-    upperFrame.pack( side = TOP)
-    loadfileButton = Button(upperFrame, text = 'Load', fg = 'black')
-    loadfileButton.pack( side = RIGHT )
-    loadfileLabel = Label(upperFrame, text = 'Load a *.csv File')
-    loadfileLabel.pack( side = LEFT)
-    filenameEntry = Entry(upperFrame)
-    filenameEntry.pack(side = BOTTOM)
+        # Setting the location of all elements using pack
+        self.pages.pack()
+        #Page 1
+        self.upperFrame.config(pady = 20)
+        self.lowerFrame.config(pady = 20)
+        self.upperFrame.pack(side = tk.TOP)
+        self.loadfileButton.pack(side = tk.RIGHT)
+        self.loadfileLabel.pack(side = tk.LEFT)
+        self.lowerFrame.pack(side = tk.BOTTOM)
 
-    #Contains the Run Button
-    lowerFrame = Frame(openMenuFrame)
-    lowerFrame.pack( side = BOTTOM)
-    runButton = Button(lowerFrame, text = 'Run', fg = 'black')
-    runButton.pack( side = BOTTOM)
+        #Page 2
+        self.upperFrame2.config(pady = 20)
+        self.upperFrame2Left.config(width = 20)
+        self.upperFrame2Right.config(width = 580)
+        self.lowerFrame2.config(pady = 20)
+        self.upperFrame2.pack(side = tk.TOP)
+        self.upperFrame2Left.pack(side = tk.LEFT)
+        self.upperFrame2Right.pack(side = tk.RIGHT)
+        self.timeLabel.pack(side = tk.TOP)
+        self.timeEntry.pack(side = tk.TOP)
+        self.distanceLabel.pack(side = tk.TOP)
+        self.distanceEntry.pack(side = tk.TOP)
+        self.spacingLabel.pack(side = tk.TOP)
+        self.predictButton.pack(side = tk.TOP)
+        self.lowerFrame2.pack(side = tk.BOTTOM)
+        self.resetButton.pack(side = tk.LEFT)
 
-    #Adds the first page in
-    pages.add(openMenuFrame, text="Load")
+    def loadFileCallback(self):
+        fname = askopenfilename()
+        nn = create_model(fname)
+        self.createPlot(fname)
 
-    showDataFrame = Frame(pages)
-    showDataFrame.pack()
+    def predictCallback(self):
+        try:
+            predict(self.nn, self.timeEntry.get())
+        except TypeError:
+            print("Neural Network must be generated prior to prediction ")
 
-    # Contains the Predict Button & Return Button
-    lowerFrame2 = Frame(showDataFrame)
-    lowerFrame2.pack(side=BOTTOM)
-    returnButton = Button(lowerFrame2, text='Return', fg='black')
-    returnButton.pack(side=LEFT)
-    predictButton = Button(lowerFrame2, text='Predict', fg='black')
-    predictButton.pack(side=RIGHT)
+    def createPlot(self, fname):
+        x, y = readData(fname)
+        print("Function to come")
 
-    #Adds the second page in
-    pages.add(showDataFrame, text="Visualize")
-
-    pages.pack()
-    master.mainloop()
+    def mainloop(self):
+        tk.mainloop()
 
 def nonlin(x,deriv = False):
     """
@@ -81,11 +128,11 @@ def readData(fname):
     """
     with open(fname, newline='') as csvfile:
         dataReader = csv.reader(csvfile, delimiter = ',', quotechar = '|')
-        inputArray = np.array([[]])
-        outputArray = np.array([[]])
+        inputArray = np.empty((0,1))
+        outputArray = np.empty((0,1))
         for row in dataReader:
-            inputArray = np.append(inputArray, row[0])
-            outputArray = np.append(outputArray, row[1])
+            inputArray = np.append(inputArray, [row[0]]).astype(float)
+            outputArray = np.append(outputArray, [row[1]]).astype(float)
     csvfile.close()
     return inputArray, outputArray
 
@@ -180,6 +227,7 @@ def create_model(fname):
     return { 'maxVals': maxVals, 'syn1': synapse1, 'syn0': synapse0}
 
 menu = Menu()
+menu.mainloop()
 #fname = input("Enter a csv filename: ")
 #neuralNetwork = create_model(fname)
 #distance = predict(neuralNetwork, 60)
