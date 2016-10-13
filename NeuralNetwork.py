@@ -9,12 +9,14 @@ __author__ = "Christopher Sweet - crs4263@rit.edu"
 
 import numpy as np
 import matplotlib as mpl
+mpl.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.backend_bases import key_press_handler
+from matplotlib.figure import Figure
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
-
-import csv
+import sys
 
 class Menu():
     """
@@ -26,7 +28,6 @@ class Menu():
         """
         Create the UI and set all attributes for usability
         """
-        self.nn = None
         self.master = tk.Tk()
         self.master.minsize(width=800, height=450)
         self.master.maxsize(width=800, height=450)
@@ -53,13 +54,16 @@ class Menu():
         self.timeLabel = tk.Label(self.upperFrame2Left, text = 'Time(min)', fg = 'black')
         self.timeEntry = tk.Entry(self.upperFrame2Left, width = 5, textvariable = tk.StringVar)
         self.distanceLabel = tk.Label(self.upperFrame2Left, text='Distance(mi)', fg='black')
-        self.distanceEntry = tk.Entry(self.upperFrame2Left, width = 5, state = tk.DISABLED)
+        self.distEntry = tk.StringVar()
+        self.distanceEntry = tk.Entry(self.upperFrame2Left, width = 5, state = tk.DISABLED,
+                                      textvariable = self.distEntry, fg = 'black')
         self.predictButton = tk.Button(self.upperFrame2Left, text = 'Predict', fg ='black',
                                command = self.predictCallback)
         self.spacingLabel = tk.Label(self.upperFrame2Left, text = "   ")
         # Lower panel on the second page
         self.lowerFrame2 = tk.Frame(self.showDataFrame)
-        self.resetButton = tk.Button(self.lowerFrame2, text = 'Reset', fg = 'black', bd = 2)
+        self.resetButton = tk.Button(self.lowerFrame2, text = 'Reset', fg = 'black',
+                                     bd = 2, command = self.resetCallback)
 
         # Adds the second page in
         self.pages.add(self.showDataFrame, text = "Visualize")
@@ -93,18 +97,28 @@ class Menu():
 
     def loadFileCallback(self):
         fname = askopenfilename()
-        nn = create_model(fname)
+        self.nn = create_model(fname)
         self.createPlot(fname)
 
     def predictCallback(self):
         try:
-            predict(self.nn, self.timeEntry.get())
+            self.distEntry.set(str(predict(self.nn, self.timeEntry.get())))
         except TypeError:
             print("Neural Network must be generated prior to prediction ")
 
+    def resetCallback(self):
+        self.master.destroy()
+        self.mainloop()
+
     def createPlot(self, fname):
         x, y = readData(fname)
-        print("Function to come")
+        f = Figure(figsize=(5,4), dpi=100)
+        a = f.add_subplot(111)
+        a.scatter(x, y, s=10)
+        canvas = FigureCanvasTkAgg(f, master=self.upperFrame2Right)
+        canvas.show()
+        canvas.get_tk_widget().pack(side = tk.TOP, fill = tk.BOTH, expand = 1)
+
 
     def mainloop(self):
         tk.mainloop()
@@ -126,14 +140,9 @@ def readData(fname):
     :param fname: File to read in
     :return: Input times, Output distances
     """
-    with open(fname, newline='') as csvfile:
-        dataReader = csv.reader(csvfile, delimiter = ',', quotechar = '|')
-        inputArray = np.empty((0,1))
-        outputArray = np.empty((0,1))
-        for row in dataReader:
-            inputArray = np.append(inputArray, [row[0]]).astype(float)
-            outputArray = np.append(outputArray, [row[1]]).astype(float)
-    csvfile.close()
+    singlearray = np.genfromtxt(fname, dtype=float, delimiter=',')
+    inputArray = singlearray[:,0].reshape(1, len(singlearray))
+    outputArray = singlearray[:,1].reshape(1, len(singlearray))
     return inputArray, outputArray
 
 def predict(model, time):
@@ -145,7 +154,7 @@ def predict(model, time):
     """
     maxVals, syn0, syn1 = model['maxVals'], model['syn0'], model['syn1']
     # Scale down into unit scalar
-    time /= maxVals[0]
+    time = float(time) / maxVals[0]
     matTime = np.array([[time]])
     # Matrix Expansion
     matTime = nonlin(matTime.dot(syn0))
@@ -202,8 +211,8 @@ def create_model(fname):
     # Seed Random values to start with
     np.random.seed(1)
     # Create the synaptic connections between neurons.
-    synapse0 = 2 * np.random.random((1, 10)) - 1
-    synapse1 = 2 * np.random.random((10, 1)) - 1
+    synapse0 = 2 * np.random.random((1, 5)) - 1
+    synapse1 = 2 * np.random.random((5, 1)) - 1
     # Training the neural network. Number of runs influences results only to a certain point.
     for t in range(0, 50000):
         # Feed data forward from input to output
@@ -230,5 +239,5 @@ menu = Menu()
 menu.mainloop()
 #fname = input("Enter a csv filename: ")
 #neuralNetwork = create_model(fname)
-#distance = predict(neuralNetwork, 60)
+#distance = predict(neuralNetwork, 30)
 #print("Based off your previous data you should be able to ride", distance, "miles!")
