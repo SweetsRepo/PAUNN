@@ -237,7 +237,3 @@ def create_model(fname):
 
 menu = Menu()
 menu.mainloop()
-#fname = input("Enter a csv filename: ")
-#neuralNetwork = create_model(fname)
-#distance = predict(neuralNetwork, 30)
-#print("Based off your previous data you should be able to ride", distance, "miles!")
